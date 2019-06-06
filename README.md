@@ -1,3 +1,37 @@
+## Calico Networking for CNI, use private registry
+
+
+```bash
+#build and push image
+bash start.sh
+```
+
+The example use flannel, portmap and bandwidth plugin.
+
+bandwidth ingress and egress limit 10Mbit.
+
+```bash
+
+# test example example-cni-flannel.yml
+# config cni-flanel
+sed -i -e "s?REGISTRY?$REGISTRY?g" example-cni-flannel.yml
+
+# setting tls after kubeadm init
+_key=`cat /etc/kubernetes/pki/etcd/ca.crt  | base64 -w 0 && echo`
+sed -i -e "s?etcd-ca: \".*\"?etcd-ca: \"$_key\"?g" example-cni-flannel.yml
+
+_key=`cat /etc/kubernetes/pki/etcd/healthcheck-client.crt  | base64 -w 0 && echo`
+sed -i -e "s?etcd-cert: \".*\"?etcd-cert: \"$_key\"?g" example-cni-flannel.yml
+
+_key=`cat /etc/kubernetes/pki/etcd/healthcheck-client.key  | base64 -w 0 && echo`
+sed -i -e "s?etcd-key: \".*\"?etcd-key: \"$_key\"?g" example-cni-flannel.yml
+
+# test it
+kubelet apply -f example-cni-flannel.yml
+
+```
+
+
 [![Build Status](https://semaphoreci.com/api/v1/calico/cni-plugin/branches/master/shields_badge.svg)](https://semaphoreci.com/calico/cni-plugin)
 [![Slack Status](https://slack.projectcalico.org/badge.svg)](https://slack.projectcalico.org)
 [![IRC Channel](https://img.shields.io/badge/irc-%23calico-blue.svg)](https://kiwiirc.com/client/irc.freenode.net/#calico)
@@ -26,3 +60,4 @@ To build the Calico Networking Plugin for CNI locally, clone this repository and
 [cni]: https://github.com/containernetworking/cni
 [cni specification]: https://github.com/containernetworking/cni/blob/master/SPEC.md
 [![Analytics](https://calico-ga-beacon.appspot.com/UA-52125893-3/calico-cni/README.md?pixel)](https://github.com/igrigorik/ga-beacon)
+

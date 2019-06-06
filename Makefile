@@ -80,6 +80,7 @@ CURL=curl -C - -sSf
 
 K8S_VERSION?=v1.14.1
 CNI_VERSION=v0.8.0
+MANIFEST_TOOL_VERSION=v1.0.0-rc3
 
 # Get version from git.
 GIT_VERSION:=$(shell git describe --tags --dirty --always)
@@ -99,11 +100,14 @@ CALICO_BUILD?=$(BUILD_IMAGE_ORG)/go-build:$(GO_BUILD_VER)
 
 PACKAGE_NAME?=github.com/projectcalico/cni-plugin
 
-BUILD_IMAGE?=calico/cni
+#BUILD_IMAGE?=calico/cni
+BUILD_IMAGE?=$(REGISTRY)/cni
 DEPLOY_CONTAINER_MARKER=cni_deploy_container-$(ARCH).created
 
-PUSH_IMAGES?=$(BUILD_IMAGE) quay.io/calico/cni
-RELEASE_IMAGES?=gcr.io/projectcalico-org/cni eu.gcr.io/projectcalico-org/cni asia.gcr.io/projectcalico-org/cni us.gcr.io/projectcalico-org/cni
+#PUSH_IMAGES?=$(BUILD_IMAGE) quay.io/calico/cni
+PUSH_IMAGES?=$(BUILD_IMAGE) $(REGISTRY)/calico/cni
+#RELEASE_IMAGES?=gcr.io/projectcalico-org/cni eu.gcr.io/projectcalico-org/cni asia.gcr.io/projectcalico-org/cni us.gcr.io/projectcalico-org/cni
+RELEASE_IMAGES?=$(REGISTRY)/projectcalico-org/cni
 
 # If this is a release, also tag and push additional images.
 ifeq ($(RELEASE),true)
@@ -111,12 +115,13 @@ PUSH_IMAGES+=$(RELEASE_IMAGES)
 endif
 
 # remove from the list to push to manifest any registries that do not support multi-arch
-EXCLUDE_MANIFEST_REGISTRIES ?= quay.io/
+EXCLUDE_MANIFEST_REGISTRIES ?= $(REGISTRY)/
 PUSH_MANIFEST_IMAGES=$(PUSH_IMAGES:$(EXCLUDE_MANIFEST_REGISTRIES)%=)
 PUSH_NONMANIFEST_IMAGES=$(filter-out $(PUSH_MANIFEST_IMAGES),$(PUSH_IMAGES))
 
 # location of docker credentials to push manifests
-DOCKER_CONFIG ?= $(HOME)/.docker/config.json
+DOCKER_CONFIG ?= docker.json
+DOCKER_DAEMON_CONFIG ?= docker-daemon.json
 
 # list of arches *not* to build when doing *-all
 #    until s390x works correctly
@@ -232,7 +237,7 @@ push-manifests: imagetag  $(addprefix sub-manifest-,$(call escapefs,$(PUSH_MANIF
 sub-manifest-%:
 	# Docker login to hub.docker.com required before running this target as we are using $(DOCKER_CONFIG) holds the docker login credentials
 	# path to credentials based on manifest-tool's requirements here https://github.com/estesp/manifest-tool#sample-usage
-	docker run -t --entrypoint /bin/sh -v $(DOCKER_CONFIG):/root/.docker/config.json $(CALICO_BUILD) -c "/usr/bin/manifest-tool push from-args --platforms $(call join_platforms,$(VALIDARCHES)) --template $(call unescapefs,$*:$(IMAGETAG))-ARCH --target $(call unescapefs,$*:$(IMAGETAG))"
+	docker run -t --entrypoint /bin/sh -v "`pwd`/$(DOCKER_CONFIG)":/root/.docker/docker.json -v "`pwd`/$(DOCKER_DAEMON_CONFIG)":/etc/docker/daemon.json  $(CALICO_BUILD) -c "curl -sSL https://github.com/estesp/manifest-tool/releases/download/${MANIFEST_TOOL_VERSION}/manifest-tool-linux-amd64 > manifest-tool  && chmod +x manifest-tool && mv manifest-tool /usr/bin/ && /usr/bin/manifest-tool --insecure push from-args --platforms $(call join_platforms,$(VALIDARCHES)) --template $(call unescapefs,$*:$(IMAGETAG))-ARCH --target $(call unescapefs,$*:$(IMAGETAG))"
 
 ## push default amd64 arch where multi-arch manifest is not supported
 push-non-manifests: imagetag $(addprefix sub-non-manifest-,$(call escapefs,$(PUSH_NONMANIFEST_IMAGES)))
@@ -271,11 +276,13 @@ endif
 	touch $@
 
 .PHONY: fetch-cni-bins
-fetch-cni-bins: $(BIN)/flannel $(BIN)/loopback $(BIN)/host-local $(BIN)/portmap $(BIN)/tuning $(BIN)/bandwidth
+#fetch-cni-bins: $(BIN)/flannel $(BIN)/loopback $(BIN)/host-local $(BIN)/portmap $(BIN)/tuning $(BIN)/bandwidth $(BIN)/ptp $(BIN)/bridge
 
-$(BIN)/flannel $(BIN)/loopback $(BIN)/host-local $(BIN)/portmap $(BIN)/tuning $(BIN)/bandwidth:
+#$(BIN)/flannel $(BIN)/loopback $(BIN)/host-local $(BIN)/portmap $(BIN)/tuning $(BIN)/bandwidth $(BIN)/ptp $(BIN)/bridge:
+fetch-cni-bins:
 	mkdir -p $(BIN)
-	$(CURL) -L --retry 5 https://github.com/containernetworking/plugins/releases/download/$(CNI_VERSION)/cni-plugins-linux-$(ARCH)-$(CNI_VERSION).tgz | tar -xz -C $(BIN) ./flannel ./loopback ./host-local ./portmap ./tuning ./bandwidth
+	$(CURL) -L --retry 5 https://github.com/containernetworking/plugins/releases/download/$(CNI_VERSION)/cni-plugins-linux-$(ARCH)-$(CNI_VERSION).tgz | tar -xz -C $(BIN) ./bandwidth  ./dhcp      ./flannel      ./host-local  ./loopback  ./portmap  ./sbr     ./tuning ./bridge     ./firewall  ./host-device  ./ipvlan      ./macvlan   ./ptp      ./static  ./vlan
+	#$(CURL) -L --retry 5 https://github.com/containernetworking/plugins/releases/download/$(CNI_VERSION)/cni-plugins-linux-$(ARCH)-$(CNI_VERSION).tgz | tar -xz -C $(BIN) ./flannel ./loopback ./host-local ./portmap ./tuning ./bandwidth ./ptp ./bridge
 
 ###############################################################################
 # Static checks
