@@ -10,10 +10,11 @@ The example use flannel, portmap and bandwidth plugin.
 
 bandwidth ingress and egress limit 10Mbit.
 
+
 ```bash
 
-# test example example-cni-flannel.yml
-# config cni-flanel
+# example use flannel
+# config registry
 sed -i -e "s?REGISTRY?$REGISTRY?g" example-cni-flannel.yml
 
 # setting tls after kubeadm init
@@ -29,6 +30,15 @@ sed -i -e "s?etcd-key: \".*\"?etcd-key: \"$_key\"?g" example-cni-flannel.yml
 # test it
 kubelet apply -f example-cni-flannel.yml
 
+```
+
+```bash
+# example use calico
+# config registry
+sed -i -e "s?REGISTRY?$REGISTRY?g" example-cni-flannel.yml
+
+# test it
+kubelet apply -f example-cni-calico.yml
 ```
 
 
