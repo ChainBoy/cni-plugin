@@ -15,6 +15,7 @@ bandwidth ingress and egress limit 10Mbit.
 
 # example use flannel
 # config registry
+REGISTRY="127.0.0.1:5000"
 sed -i -e "s?REGISTRY?$REGISTRY?g" example-cni-flannel.yml
 
 # setting tls after kubeadm init
@@ -35,6 +36,7 @@ kubelet apply -f example-cni-flannel.yml
 ```bash
 # example use calico
 # config registry
+REGISTRY="127.0.0.1:5000"
 sed -i -e "s?REGISTRY?$REGISTRY?g" example-cni-flannel.yml
 
 # test it
